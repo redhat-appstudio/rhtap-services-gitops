@@ -1,0 +1,17 @@
+apiVersion: hive.openshift.io/v1
+kind: HiveConfig
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  labels:
+    backplaneconfig.name: engine
+  name: hive
+spec:
+  globalPullSecretRef:
+    name: "global-pull-secret"
+  managedDomains:
+    - aws:
+        credentialsSecretRef:
+          name: "hive-aws-creds"
+      domains:
+        - "rhtap.devcluster.openshift.com"
