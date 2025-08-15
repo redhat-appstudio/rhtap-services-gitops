@@ -1,0 +1,92 @@
+apiVersion: v1
+data:
+  override.conf: |
+    listen_addresses = '*'
+    max_connections = '1500'
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: jfrog-container-registry
+    app.kubernetes.io/name: postgresql
+    helm.sh/chart: postgresql-10.3.18
+  name: jfrog-container-registry-postgresql-extended-configuration
+  namespace: artifactory-jcr2
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: jfrog-container-registry-artifactory
+    chart: artifactory-107.104.15
+    heritage: Helm
+    release: jfrog-container-registry
+  name: jfrog-container-registry-artifactory-configmaps
+  namespace: artifactory-jcr2
+---
+apiVersion: v1
+data:
+  installer-info.json: |
+    {"productId":"Helm_artifactory-jcr/107.104.15","features":[{"featureId":"Platform/kubernetes-v1.29.14+7cf4c05"},{"featureId":"Database/"},{"featureId":"PostgreSQL_Enabled/true"},{"featureId":"Nginx_Enabled/false"},{"featureId":"ArtifactoryPersistence_Type/file-system"},{"featureId":"SplitServicesToContainers_Enabled/true"},{"featureId":"UnifiedSecretInstallation_Enabled/true"},{"featureId":"Filebeat_Enabled/false"},{"featureId":"ReplicaCount/1"}]}
+kind: ConfigMap
+metadata:
+  labels:
+    app: artifactory
+    chart: artifactory-107.104.15
+    heritage: Helm
+    release: jfrog-container-registry
+  name: jfrog-container-registry-artifactory-installer-info
+  namespace: artifactory-jcr2
+---
+apiVersion: v1
+data:
+  configreloader.sh: |
+    #!/bin/sh
+    ####
+    # A helper script to use inotifyd to reload nginx config
+    # upon configmap/ssl secrets changes.
+    #
+    # Synopsis: setup the nginx command via the values file
+    # as follows:
+    #
+    ####
+    # nginx:
+    #   customVolumes: |
+    #     - name: scripts
+    #       configMap:
+    #         name: {{ template "artifactory.fullname" . }}-nginx-scripts
+    #         defaultMode: 0550
+    #   customVolumeMounts: |
+    #     - name: scripts
+    #       mountPath: /var/opt/jfrog/nginx/scripts/
+    #   customCommand:
+    #     - /bin/sh
+    #     - -c
+    #     - |
+    #       # watch for configmap changes
+    #       /sbin/inotifyd /var/opt/jfrog/nginx/scripts/configreloader.sh {{ .Values.nginx.persistence.mountPath -}}/conf.d:n &
+    #       {{ if .Values.nginx.https.enabled -}}
+    #       # watch for tls secret changes
+    #       /sbin/inotifyd /var/opt/jfrog/nginx/scripts/configreloader.sh {{ .Values.nginx.persistence.mountPath -}}/ssl:n &
+    #       {{ end -}}
+    #       nginx -g 'daemon off;'
+    if [[ "$3" =~ data_tmp ]] && [ "$1" = "n" ]
+    then
+      # a symlink has changed in one of the watched folders
+      # lets verify the config
+      nginx -t -q
+      if [ $? -eq 0 ]
+      then
+        # config is valid, lets reload nginx config
+        nginx -q -s reload
+      fi
+    fi
+kind: ConfigMap
+metadata:
+  labels:
+    app: artifactory
+    chart: artifactory-107.104.15
+    heritage: Helm
+    release: jfrog-container-registry
+  name: jfrog-container-registry-artifactory-nginx-scripts
+  namespace: artifactory-jcr2
+

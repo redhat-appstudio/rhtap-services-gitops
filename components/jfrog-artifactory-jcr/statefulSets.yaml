@@ -1,0 +1,659 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/component: primary
+    app.kubernetes.io/instance: jfrog-container-registry
+    app.kubernetes.io/name: postgresql
+  name: jfrog-container-registry-postgresql
+  namespace: artifactory-jcr2
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: jfrog-container-registry
+      app.kubernetes.io/name: postgresql
+      role: primary
+  serviceName: jfrog-container-registry-postgresql-headless
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: primary
+        app.kubernetes.io/instance: jfrog-container-registry
+        app.kubernetes.io/name: postgresql
+        role: primary
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: primary
+                  app.kubernetes.io/instance: jfrog-container-registry
+                  app.kubernetes.io/name: postgresql
+              namespaces:
+              - artifactory-jcr2
+              topologyKey: kubernetes.io/hostname
+            weight: 1
+      containers:
+      - env:
+        - name: BITNAMI_DEBUG
+          value: "false"
+        - name: POSTGRESQL_PORT_NUMBER
+          value: "5432"
+        - name: POSTGRESQL_VOLUME_DIR
+          value: /bitnami/postgresql
+        - name: PGDATA
+          value: /bitnami/postgresql/data
+        - name: POSTGRES_POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-postgres-password
+              name: jfrog-container-registry-postgresql
+        - name: POSTGRES_USER
+          value: artifactory
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-password
+              name: jfrog-container-registry-postgresql
+        - name: POSTGRES_DB
+          value: artifactory
+        - name: POSTGRESQL_ENABLE_LDAP
+          value: "no"
+        - name: POSTGRESQL_ENABLE_TLS
+          value: "no"
+        - name: POSTGRESQL_LOG_HOSTNAME
+          value: "false"
+        - name: POSTGRESQL_LOG_CONNECTIONS
+          value: "false"
+        - name: POSTGRESQL_LOG_DISCONNECTIONS
+          value: "false"
+        - name: POSTGRESQL_PGAUDIT_LOG_CATALOG
+          value: "off"
+        - name: POSTGRESQL_CLIENT_MIN_MESSAGES
+          value: error
+        - name: POSTGRESQL_SHARED_PRELOAD_LIBRARIES
+          value: pgaudit
+        image: releases-docker.jfrog.io/bitnami/postgresql:15.6.0-debian-11-r16
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - exec pg_isready -U "artifactory" -d "dbname=artifactory" -h 127.0.0.1
+              -p 5432
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: jfrog-container-registry-postgresql
+        ports:
+        - containerPort: 5432
+          name: tcp-postgresql
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - -e
+            - |
+              exec pg_isready -U "artifactory" -d "dbname=artifactory" -h 127.0.0.1 -p 5432
+              [ -f /opt/bitnami/postgresql/tmp/.initialized ] || [ -f /bitnami/postgresql/.initialized ]
+          failureThreshold: 6
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /bitnami/postgresql/conf/conf.d/
+          name: postgresql-extended-config
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: /bitnami/postgresql
+          name: data
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: jfrog-container-registry-postgresql-extended-configuration
+        name: postgresql-extended-config
+      - emptyDir:
+          medium: Memory
+          sizeLimit: 1Gi
+        name: dshm
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 200Gi
+      volumeMode: Filesystem
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: artifactory
+    chart: artifactory-107.104.15
+    component: artifactory
+    heritage: Helm
+    release: jfrog-container-registry
+    version: 7.104.15
+  name: jfrog-container-registry-artifactory
+  namespace: artifactory-jcr2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: artifactory
+      release: jfrog-container-registry
+      role: artifactory
+  serviceName: artifactory
+  template:
+    metadata:
+      annotations:
+        checksum/artifactory-unified-secret: 5d3f73ccd18f36c8bbb75f96f14e7ba4ca3a5f2e3ba5e5a5b8bfd1608fe85d6b
+      labels:
+        app: artifactory
+        chart: artifactory-107.104.15
+        component: artifactory
+        heritage: Helm
+        release: jfrog-container-registry
+        role: artifactory
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: artifactory
+                  release: jfrog-container-registry
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      containers:
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/router/app/bin/entrypoint-router.sh
+        env:
+        - name: JF_ROUTER_TOPOLOGY_LOCAL_REQUIREDSERVICETYPES
+          value: jfrt,jfac,jfob,jfmd,jfevt,jffe,jftpl
+        image: releases-docker.jfrog.io/jfrog/router:7.149.2
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - while [[ $(curl --fail --silent --connect-timeout 2 http://localhost:8081/artifactory/api/v1/system/liveness)
+                =~ OK ]]; do echo Artifactory is still alive; sleep 2; done
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -s -k --fail --max-time 5 http://localhost:8082/router/api/v1/system/liveness
+          failureThreshold: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: router
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -s -k --fail --max-time 5 http://localhost:8082/router/api/v1/system/readiness
+          failureThreshold: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -s -k --fail --max-time 5 http://localhost:8082/router/api/v1/system/readiness
+          failureThreshold: 30
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/router
+          name: artifactory-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/artifactory/app/third-party/node/bin/node /opt/jfrog/artifactory/app/frontend/bin/server/dist/bundle.js /opt/jfrog/artifactory/app/frontend
+        env:
+        - name: JF_SHARED_NODE_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        image: releases-docker.jfrog.io/jfrog/artifactory-jcr:7.104.15
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 5 http://localhost:8070/api/v1/system/liveness
+          failureThreshold: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: frontend
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 5 http://localhost:8070/api/v1/system/readiness
+          failureThreshold: 90
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/artifactory
+          name: artifactory-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/artifactory/app/metadata/bin/jf-metadata start
+        env:
+        - name: JF_SHARED_NODE_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-password
+              name: jfrog-container-registry-postgresql
+        image: releases-docker.jfrog.io/jfrog/artifactory-jcr:7.104.15
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 5 http://localhost:8086/api/v1/system/liveness
+          failureThreshold: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: metadata
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 5 http://localhost:8086/api/v1/system/readiness
+          failureThreshold: 90
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/artifactory
+          name: artifactory-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/artifactory/app/event/bin/jf-event start
+        env:
+        - name: JF_SHARED_NODE_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        image: releases-docker.jfrog.io/jfrog/artifactory-jcr:7.104.15
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 5 http://localhost:8061/api/v1/system/liveness
+          failureThreshold: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: event
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 5 http://localhost:8061/api/v1/system/readiness
+          failureThreshold: 90
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/artifactory
+          name: artifactory-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          set -e; exec /opt/jfrog/artifactory/app/access/bin/entrypoint-access.sh
+        env:
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-password
+              name: jfrog-container-registry-postgresql
+        image: releases-docker.jfrog.io/jfrog/artifactory-jcr:7.104.15
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 5 http://localhost:8040/access/api/v1/system/liveness
+          failureThreshold: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: access
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 5 http://localhost:8040/access/api/v1/system/readiness
+          failureThreshold: 30
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/artifactory
+          name: artifactory-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/artifactory/app/topology/bin/entrypoint-topology.sh
+        env:
+        - name: JF_SHARED_NODE_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-password
+              name: jfrog-container-registry-postgresql
+        image: releases-docker.jfrog.io/jfrog/artifactory-jcr:7.104.15
+        livenessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /topology/api/v1/system/liveness
+            port: 8020
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: topology
+        ports:
+        - containerPort: 8020
+          name: http-topology
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 30
+          httpGet:
+            path: /topology/api/v1/system/readiness
+            port: 8020
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 15
+          successThreshold: 1
+          timeoutSeconds: 5
+        startupProbe:
+          failureThreshold: 90
+          httpGet:
+            path: /topology/api/v1/system/readiness
+            port: 8020
+            scheme: HTTP
+          initialDelaySeconds: 3
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/artifactory
+          name: artifactory-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          exec /opt/jfrog/artifactory/app/observability/bin/jf-observability start
+        env:
+        - name: JF_SHARED_NODE_ID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        image: releases-docker.jfrog.io/jfrog/artifactory-jcr:7.104.15
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 5 http://localhost:8036/api/v1/system/liveness
+          failureThreshold: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: observability
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl --fail --max-time 5 http://localhost:8036/api/v1/system/readiness
+          failureThreshold: 90
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/artifactory
+          name: artifactory-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          set -e; if [ -d /artifactory_extra_conf ] && [ -d /artifactory_bootstrap ]; then
+            echo "Copying bootstrap config from /artifactory_extra_conf to /artifactory_bootstrap";
+            cp -Lrfv /artifactory_extra_conf/ /artifactory_bootstrap/;
+          fi; exec /entrypoint-artifactory.sh
+        env:
+        - name: JF_ROUTER_ENABLED
+          value: "true"
+        - name: JF_ROUTER_SERVICE_ENABLED
+          value: "false"
+        - name: JF_EVENT_ENABLED
+          value: "false"
+        - name: JF_METADATA_ENABLED
+          value: "false"
+        - name: JF_FRONTEND_ENABLED
+          value: "false"
+        - name: JF_FEDERATION_ENABLED
+          value: "false"
+        - name: JF_OBSERVABILITY_ENABLED
+          value: "false"
+        - name: JF_JFCONNECT_SERVICE_ENABLED
+          value: "false"
+        - name: JF_EVIDENCE_ENABLED
+          value: "false"
+        - name: JF_ONEMODEL_ENABLED
+          value: "false"
+        - name: JF_ACCESS_ENABLED
+          value: "false"
+        - name: JF_TOPOLOGY_SPLIT_CONTAINER_ENABLED
+          value: "true"
+        - name: JF_SHARED_DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgresql-password
+              name: jfrog-container-registry-postgresql
+        image: releases-docker.jfrog.io/jfrog/artifactory-jcr:7.104.15
+        livenessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -s -k --fail --max-time 5 http://localhost:8091/artifactory/api/v1/system/liveness
+          failureThreshold: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        name: artifactory
+        ports:
+        - containerPort: 8082
+          name: http
+          protocol: TCP
+        - containerPort: 8081
+          name: http-internal
+          protocol: TCP
+        startupProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - curl -s -k --fail --max-time 5 http://localhost:8091/artifactory/api/v1/system/readiness
+          failureThreshold: 90
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/artifactory
+          name: artifactory-volume
+        - mountPath: /tmp/etc/artifactory/binarystore.xml
+          name: artifactory-unified-secret-volume
+          subPath: binarystore.xml
+        - mountPath: /artifactory_bootstrap/info/installer-info.json
+          name: installer-info
+          subPath: installer-info.json
+      dnsPolicy: ClusterFirst
+      initContainers:
+      - command:
+        - bash
+        - -c
+        - rm -fv /var/opt/jfrog/artifactory/etc/db.properties
+        image: releases-docker.jfrog.io/ubi9/ubi-minimal:9.5.1741850109
+        name: delete-db-properties
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 50Mi
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/artifactory
+          name: artifactory-volume
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          if [[ -e "/var/opt/jfrog/artifactory/etc/filebeat.yaml" ]]; then chmod 644 /var/opt/jfrog/artifactory/etc/filebeat.yaml; fi; echo "Copy system.yaml to /var/opt/jfrog/artifactory/etc"; mkdir -p /var/opt/jfrog/artifactory/etc; mkdir -p /var/opt/jfrog/artifactory/etc/access/keys/trusted; cp -fv /tmp/etc/system.yaml /var/opt/jfrog/artifactory/etc/system.yaml; echo "Copy binarystore.xml file"; mkdir -p /var/opt/jfrog/artifactory/etc/artifactory; cp -fv /tmp/etc/artifactory/binarystore.xml /var/opt/jfrog/artifactory/etc/artifactory/binarystore.xml; echo "Copy access.config.patch.yml to /var/opt/jfrog/artifactory/etc/access"; mkdir -p /var/opt/jfrog/artifactory/etc/access; cp -fv /tmp/etc/access.config.patch.yml /var/opt/jfrog/artifactory/etc/access/access.config.patch.yml;
+        image: releases-docker.jfrog.io/ubi9/ubi-minimal:9.5.1741850109
+        name: copy-system-configurations
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 50Mi
+        volumeMounts:
+        - mountPath: /var/opt/jfrog/artifactory
+          name: artifactory-volume
+        - mountPath: /tmp/etc/system.yaml
+          name: artifactory-unified-secret-volume
+          subPath: system.yaml
+        - mountPath: /tmp/etc/artifactory/binarystore.xml
+          name: artifactory-unified-secret-volume
+          subPath: binarystore.xml
+        - mountPath: /tmp/etc/access.config.patch.yml
+          name: artifactory-unified-secret-volume
+          subPath: access.config.patch.yml
+      - command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Waiting for postgresql to come up"
+          ready=false;
+          while ! $ready; do echo waiting;
+            timeout 2s bash -c "</dev/tcp/jfrog-container-registry-postgresql/5432"; exit_status=$?;
+            if [[ $exit_status -eq 0 ]]; then ready=true; echo "database ok"; fi; sleep 1;
+          done
+        image: releases-docker.jfrog.io/ubi9/ubi-minimal:9.5.1741850109
+        name: wait-for-db
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 50Mi
+      terminationGracePeriodSeconds: 40
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: jfrog-container-registry-artifactory-installer-info
+        name: installer-info
+      - configMap:
+          defaultMode: 420
+          name: jfrog-container-registry-artifactory-configmaps
+        name: artifactory-configmaps
+      - name: artifactory-unified-secret-volume
+        secret:
+          defaultMode: 420
+          secretName: jfrog-container-registry-artifactory-unified-secret
+  updateStrategy:
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: artifactory-volume
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 20Gi
+      volumeMode: Filesystem
