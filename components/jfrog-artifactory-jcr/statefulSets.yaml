@@ -120,10 +120,6 @@ spec:
           name: dshm
         - mountPath: /bitnami/postgresql
           name: data
-      dnsPolicy: ClusterFirst
-      restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
       terminationGracePeriodSeconds: 30
       volumes:
       - configMap:
@@ -134,8 +130,6 @@ spec:
           medium: Memory
           sizeLimit: 1Gi
         name: dshm
-  updateStrategy:
-    type: RollingUpdate
   volumeClaimTemplates:
   - apiVersion: v1
     kind: PersistentVolumeClaim
@@ -154,10 +148,7 @@ kind: StatefulSet
 metadata:
   labels:
     app: artifactory
-    chart: artifactory-107.104.15
     component: artifactory
-    heritage: Helm
-    release: jfrog-container-registry
     version: 7.104.15
   name: jfrog-container-registry-artifactory
   namespace: artifactory-jcr2
@@ -166,7 +157,6 @@ spec:
   selector:
     matchLabels:
       app: artifactory
-      release: jfrog-container-registry
       role: artifactory
   serviceName: artifactory
   template:
@@ -175,10 +165,7 @@ spec:
         checksum/artifactory-unified-secret: 5d3f73ccd18f36c8bbb75f96f14e7ba4ca3a5f2e3ba5e5a5b8bfd1608fe85d6b
       labels:
         app: artifactory
-        chart: artifactory-107.104.15
         component: artifactory
-        heritage: Helm
-        release: jfrog-container-registry
         role: artifactory
     spec:
       affinity:
@@ -188,7 +175,6 @@ spec:
               labelSelector:
                 matchLabels:
                   app: artifactory
-                  release: jfrog-container-registry
               topologyKey: kubernetes.io/hostname
             weight: 100
       containers:
@@ -566,7 +552,6 @@ spec:
         - mountPath: /artifactory_bootstrap/info/installer-info.json
           name: installer-info
           subPath: installer-info.json
-      dnsPolicy: ClusterFirst
       initContainers:
       - command:
         - bash
@@ -643,8 +628,6 @@ spec:
         secret:
           defaultMode: 420
           secretName: jfrog-container-registry-artifactory-unified-secret
-  updateStrategy:
-    type: RollingUpdate
   volumeClaimTemplates:
   - apiVersion: v1
     kind: PersistentVolumeClaim

@@ -8,7 +8,6 @@ metadata:
   labels:
     app.kubernetes.io/instance: jfrog-container-registry
     app.kubernetes.io/name: postgresql
-    helm.sh/chart: postgresql-10.3.18
   name: jfrog-container-registry-postgresql-extended-configuration
   namespace: artifactory-jcr2
 ---
@@ -17,9 +16,6 @@ kind: ConfigMap
 metadata:
   labels:
     app: jfrog-container-registry-artifactory
-    chart: artifactory-107.104.15
-    heritage: Helm
-    release: jfrog-container-registry
   name: jfrog-container-registry-artifactory-configmaps
   namespace: artifactory-jcr2
 ---
@@ -31,9 +27,6 @@ kind: ConfigMap
 metadata:
   labels:
     app: artifactory
-    chart: artifactory-107.104.15
-    heritage: Helm
-    release: jfrog-container-registry
   name: jfrog-container-registry-artifactory-installer-info
   namespace: artifactory-jcr2
 ---
@@ -84,9 +77,6 @@ kind: ConfigMap
 metadata:
   labels:
     app: artifactory
-    chart: artifactory-107.104.15
-    heritage: Helm
-    release: jfrog-container-registry
   name: jfrog-container-registry-artifactory-nginx-scripts
   namespace: artifactory-jcr2
 

@@ -4,15 +4,9 @@ metadata:
   labels:
     app.kubernetes.io/instance: jfrog-container-registry
     app.kubernetes.io/name: postgresql
-    helm.sh/chart: postgresql-10.3.18
-    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
   name: jfrog-container-registry-postgresql-headless
   namespace: artifactory-jcr2
 spec:
-  internalTrafficPolicy: Cluster
-  ipFamilies:
-  - IPv4
-  ipFamilyPolicy: SingleStack
   ports:
   - name: tcp-postgresql
     port: 5432
@@ -22,8 +16,6 @@ spec:
   selector:
     app.kubernetes.io/instance: jfrog-container-registry
     app.kubernetes.io/name: postgresql
-  sessionAffinity: None
-  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
@@ -31,14 +23,9 @@ metadata:
   labels:
     app.kubernetes.io/instance: jfrog-container-registry
     app.kubernetes.io/name: postgresql
-    helm.sh/chart: postgresql-10.3.18
   name: jfrog-container-registry-postgresql
   namespace: artifactory-jcr2
 spec:
-  internalTrafficPolicy: Cluster
-  ipFamilies:
-  - IPv4
-  ipFamilyPolicy: SingleStack
   ports:
   - name: tcp-postgresql
     port: 5432
@@ -48,25 +35,16 @@ spec:
     app.kubernetes.io/instance: jfrog-container-registry
     app.kubernetes.io/name: postgresql
     role: primary
-  sessionAffinity: None
-  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
     app: artifactory
-    chart: artifactory-107.104.15
     component: artifactory
-    heritage: Helm
-    release: jfrog-container-registry
   name: jfrog-container-registry-artifactory
   namespace: artifactory-jcr2
 spec:
-  internalTrafficPolicy: Cluster
-  ipFamilies:
-  - IPv4
-  ipFamilyPolicy: SingleStack
   ports:
   - name: http-router
     port: 8082
@@ -79,7 +57,4 @@ spec:
   selector:
     app: artifactory
     component: artifactory
-    release: jfrog-container-registry
-  sessionAffinity: None
-  type: ClusterIP
 

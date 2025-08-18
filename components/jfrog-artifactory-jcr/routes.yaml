@@ -3,10 +3,7 @@ kind: Route
 metadata:
   labels:
     app: artifactory
-    chart: artifactory-107.104.15
     component: artifactory
-    heritage: Helm
-    release: jfrog-container-registry
   name: artifactory-docker
   namespace: artifactory-jcr2
 spec:
@@ -17,18 +14,13 @@ spec:
   to:
     kind: Service
     name: jfrog-container-registry-artifactory
-    weight: 100
-  wildcardPolicy: None
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   labels:
     app: artifactory
-    chart: artifactory-107.104.15
     component: artifactory
-    heritage: Helm
-    release: jfrog-container-registry
   name: artifactory-ui
   namespace: artifactory-jcr2
 spec:
@@ -39,6 +31,3 @@ spec:
   to:
     kind: Service
     name: jfrog-container-registry-artifactory
-    weight: 100
-  wildcardPolicy: None
-
