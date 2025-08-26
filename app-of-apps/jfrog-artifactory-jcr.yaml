@@ -19,8 +19,8 @@ spec:
       releaseName: jfrog-container-registry
       valueFiles:
         - $values/components/artifactory/values.yaml
-  - repoURL: https://github.com/smatula/rhtap-services-gitops
-    targetRevision: artifactory
+  - repoURL: https://github.com/redhat-appstudio/rhtap-services-gitops
+    targetRevision: HEAD
     ref: values
   syncPolicy:
     managedNamespaceMetadata:
