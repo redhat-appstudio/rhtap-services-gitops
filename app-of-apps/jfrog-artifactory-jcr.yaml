@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jfrog-artifactory-jcr
+  namespace: gitops-resources
+spec:
+  destination:
+    namespace: artifactory
+    server: https://kubernetes.default.svc
+  project: gitops-resources
+  sources:
+  - repoURL: 'https://github.com/redhat-appstudio/rhtap-services-gitops'
+    targetRevision: HEAD
+    path: 'components/artifactory'
+  - repoURL: https://charts.jfrog.io
+    chart: artifactory-jcr
+    targetRevision: 107.117.12 # Use a specific chart version
+    helm:
+      releaseName: jfrog-container-registry
+      valueFiles:
+        - $values/components/artifactory/values.yaml
+  - repoURL: https://github.com/redhat-appstudio/rhtap-services-gitops
+    targetRevision: HEAD
+    ref: values
+  syncPolicy:
+    managedNamespaceMetadata:
+      labels:
+        argocd.argoproj.io/managed-by: openshift-gitops
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+
