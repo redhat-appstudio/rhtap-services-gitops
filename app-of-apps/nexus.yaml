@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nexus
+  namespace: gitops-resources
+spec:
+  destination:
+    namespace: nexus
+    server: https://kubernetes.default.svc
+  project: gitops-resources
+  source:
+    path: ./components/nexus
+    repoURL: https://github.com/redhat-appstudio/rhtap-services-gitops
+    targetRevision: nexus
+  syncPolicy:
+    managedNamespaceMetadata:
+      labels:
+        argocd.argoproj.io/managed-by: openshift-gitops
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - PruneLast=true
+

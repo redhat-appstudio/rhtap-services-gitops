@@ -5,6 +5,7 @@ source ./envfile
 # Create namespaces where the secret will be
 oc new-project hive
 oc new-project artifactory
+oc new-project nexus
 
 # Create secrets
 echo "Creating Pull Secret"
