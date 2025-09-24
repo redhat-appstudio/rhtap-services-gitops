@@ -11,7 +11,7 @@ spec:
   source:
     path: ./components/nexus
     repoURL: https://github.com/redhat-appstudio/rhtap-services-gitops
-    targetRevision: nexus
+    targetRevision: main
   syncPolicy:
     managedNamespaceMetadata:
       labels:
