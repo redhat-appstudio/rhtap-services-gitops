@@ -10,10 +10,10 @@ spec:
   project: gitops-resources
   source:
     path: ./app-of-apps
-    repoURL: https://github.com/redhat-appstudio/rhtap-services-gitops
-    targetRevision: HEAD
+    repoURL: https://github.com/xinredhat/rhtap-services-gitops.git
+    targetRevision: jenkins
   syncPolicy:
-    automated: 
+    automated:
       prune: true
       selfHeal: true
     syncOptions:
